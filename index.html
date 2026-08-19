@@ -1,93 +1,318 @@
-<!-- COSA FA: pagina singola dove Ric compila 6 campi sulla sua web app, preme un pulsante e ottiene il testo-richiesta da incollare in una chat Claude. -->
+<!-- COSA FA: pagina singola dove Ric descrive cosa vuole ottenere, risponde a un questionario a scelta chiusa, riceve la proposta del tipo di prodotto (con perché e alternativa), conferma, compila 6 campi e ottiene il testo-richiesta da incollare in una chat Claude per avere il kit di quel tipo. -->
 <!-- CHI LO APRE: solo Ric, con doppio clic dal Finder (WebAppSH/app/index.html), in Safari o Chrome, anche senza internet. -->
-<!-- COSA NON TOCCA: nessun file sul Mac, nessun salvataggio, nessun invio in rete, nessuna libreria esterna. -->
+<!-- COSA NON TOCCA: nessun file sul Mac, nessun salvataggio, nessun invio in rete, nessuna libreria esterna, nessun servizio esterno per proporre il tipo. -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prepara la richiesta per la tua web app</title>
+<title>Scegli il tipo di prodotto e prepara la richiesta</title>
 <style>
   /* CSS3: aspetto essenziale, si deve solo leggere bene (decisioni.md: niente grafica curata) */
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; line-height: 1.5; color: #222; background: #fff; }
   h1 { font-size: 1.5rem; margin: 0 0 8px; }
+  h2 { font-size: 1.1rem; margin: 28px 0 8px; }
   p.intro { margin: 0 0 24px; color: #444; }
   label { display: block; font-weight: bold; margin: 18px 0 4px; }
   small.aiuto { display: block; font-weight: normal; color: #666; margin-bottom: 6px; }
-  input, textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid #999; border-radius: 4px; }
+  input[type=text], textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid #999; border-radius: 4px; }
   textarea { min-height: 80px; resize: vertical; }
+  fieldset { border: 1px solid #ccc; border-radius: 4px; padding: 8px 12px 12px; margin: 14px 0; }
+  legend { font-weight: bold; padding: 0 4px; }
+  fieldset label { font-weight: normal; margin: 6px 0; cursor: pointer; }
+  fieldset input[type=radio] { margin-right: 8px; }
   button { font: inherit; padding: 10px 18px; margin: 20px 8px 0 0; border: 1px solid #333; border-radius: 4px; background: #eee; cursor: pointer; }
   button.principale { background: #222; color: #fff; }
-  #avviso { color: #b00020; font-weight: bold; margin-top: 12px; min-height: 1.4em; }
-  #zona-testo { display: none; margin-top: 24px; }
-  #zona-testo h2 { font-size: 1.1rem; margin: 0 0 8px; }
+  .avviso { color: #b00020; font-weight: bold; margin-top: 12px; min-height: 1.4em; }
+  .nascosto { display: none; }
+  .riquadro { border: 2px solid #222; border-radius: 4px; padding: 12px 14px; margin: 14px 0; }
+  .riquadro.alternativa { border: 1px solid #999; }
+  .riquadro p { margin: 6px 0; }
+  .riquadro button { margin-top: 10px; }
+  #tipo-confermato { font-weight: bold; font-size: 1.1rem; margin: 24px 0 0; }
   #testo-pronto { width: 100%; box-sizing: border-box; min-height: 320px; font: 0.95rem/1.4 Menlo, Monaco, monospace; padding: 10px; border: 1px solid #999; border-radius: 4px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
 
-<h1>Prepara la richiesta per la tua web app</h1>
-<p class="intro">Compila i 6 campi, premi "Prepara il testo", copia il testo che compare e incollalo in una chat Claude: riceverai il documento per completare la web app dall'inizio alla fine.</p>
+<h1>Scegli il tipo di prodotto e prepara la richiesta</h1>
+<p class="intro">Descrivi cosa vuoi ottenere e premi "Avanti": la pagina ti fa un questionario a scelta chiusa, ti propone il tipo di prodotto adatto con il perché e un'alternativa, tu confermi, compili i 6 campi e ottieni il testo da incollare in una chat Claude per ricevere il kit di quel tipo.</p>
 
-<form id="modulo" autocomplete="off">
-
-  <label for="nome">1. Nome del prodotto</label>
-  <small class="aiuto">In questa fetta il prodotto è uno solo: "web app". Puoi aggiungere un nome tuo dopo (esempio: web app SerenoHub).</small>
-  <input id="nome" type="text" value="web app">
-
-  <label for="cosa">2. Cosa deve fare</label>
-  <small class="aiuto">Una o due frasi: chi entra, cosa compila, cosa ottiene.</small>
-  <textarea id="cosa"></textarea>
-
-  <label for="chi">3. Chi lo usa</label>
-  <small class="aiuto">Una frase: chi è la persona che la usa nei primi 30 giorni.</small>
-  <textarea id="chi"></textarea>
-
-  <label for="riuscito">4. Come capisco che è riuscito</label>
-  <small class="aiuto">Una prova SÌ/NO che puoi fare da solo (esempio: premo il pulsante e in 20 minuti ho il documento).</small>
-  <textarea id="riuscito"></textarea>
-
-  <label for="non">5. Cosa NON deve fare</label>
-  <small class="aiuto">Elenco di cose escluse, separate da virgola (esempio: account, pagamenti, grafica curata).</small>
-  <textarea id="non"></textarea>
-
-  <label for="vincoli">6. Vincoli e attrezzi</label>
-  <small class="aiuto">Con cosa lavori e cosa non hai (esempio: Mac, solo Claude Cowork, niente terminale, niente editor di codice, solo gratis).</small>
-  <textarea id="vincoli"></textarea>
-
-  <button type="button" id="prepara" class="principale">Prepara il testo</button>
+<!-- PASSO 1: la descrizione -->
+<div id="passo-descrizione">
+  <label for="descrizione">Cosa vuoi ottenere</label>
+  <small class="aiuto">Una o due frasi, con parole tue: cosa deve fare e per chi (esempio: un registro delle spese di casa con i totali per mese).</small>
+  <textarea id="descrizione"></textarea>
+  <button type="button" id="avanti" class="principale">Avanti</button>
   <button type="button" id="ricomincia">Ricomincia</button>
-  <div id="avviso" aria-live="polite"></div>
-</form>
+  <div id="avviso-descrizione" class="avviso" aria-live="polite"></div>
+</div>
 
-<div id="zona-testo">
-  <h2>Testo pronto: copialo e incollalo in una chat Claude</h2>
-  <button type="button" id="copia">Copia il testo</button>
-  <textarea id="testo-pronto" readonly></textarea>
+<!-- PASSO 2: il questionario a scelta chiusa (la pagina non capisce il testo libero: le informazioni per proporre il tipo le prende da qui) -->
+<div id="passo-questionario" class="nascosto">
+  <h2>Questionario: rispondi alle 5 domande</h2>
+
+  <fieldset id="d1">
+    <legend>1. Chi lo usa soprattutto?</legend>
+    <label><input type="radio" name="d1" value="io">Solo io</label>
+    <label><input type="radio" name="d1" value="pochi">Poche persone che conosco</label>
+    <label><input type="radio" name="d1" value="tanti">Tante persone che non conosco</label>
+  </fieldset>
+
+  <fieldset id="d2">
+    <legend>2. Cosa fa soprattutto?</legend>
+    <label><input type="radio" name="d2" value="mostra">Mostra informazioni da leggere o guardare</label>
+    <label><input type="radio" name="d2" value="conti">Fa conti su numeri ed elenchi</label>
+    <label><input type="radio" name="d2" value="raccoglie">Raccoglie dati da chi lo usa e li lavora in passi</label>
+    <label><input type="radio" name="d2" value="ripete">Ripete da solo un'operazione noiosa al posto mio</label>
+  </fieldset>
+
+  <fieldset id="d3">
+    <legend>3. Dove si usa?</legend>
+    <label><input type="radio" name="d3" value="computer">Al computer</label>
+    <label><input type="radio" name="d3" value="telefono">Sul telefono, in giro</label>
+    <label><input type="radio" name="d3" value="testo">Si legge come un testo, anche stampato</label>
+    <label><input type="radio" name="d3" value="sottofondo">Non si usa a mano: lavora da solo in sottofondo</label>
+  </fieldset>
+
+  <fieldset id="d4">
+    <legend>4. I dati cambiano?</legend>
+    <label><input type="radio" name="d4" value="fisso">No, una volta fatto resta uguale</label>
+    <label><input type="radio" name="d4" value="cambia">Sì, i dati cambiano ogni volta che lo uso</label>
+  </fieldset>
+
+  <fieldset id="d5">
+    <legend>5. Chi lo usa deve entrare con un proprio accesso e ritrovare le proprie cose?</legend>
+    <label><input type="radio" name="d5" value="no">No</label>
+    <label><input type="radio" name="d5" value="si">Sì</label>
+  </fieldset>
+
+  <button type="button" id="proponi" class="principale">Proponi il tipo</button>
+  <div id="avviso-questionario" class="avviso" aria-live="polite"></div>
+</div>
+
+<!-- PASSO 3: la proposta del tipo (riempita dal codice) -->
+<div id="passo-proposta" class="nascosto">
+  <h2>La proposta della pagina</h2>
+  <div id="proposta"></div>
+</div>
+
+<!-- PASSO 4: tipo confermato + i 6 campi del giro 1 + testo-richiesta -->
+<div id="passo-campi" class="nascosto">
+  <p id="tipo-confermato"></p>
+  <button type="button" id="cambia-tipo">Cambia tipo</button>
+
+  <form id="modulo" autocomplete="off">
+    <label for="nome">1. Nome del prodotto</label>
+    <small class="aiuto">Già compilato con il tipo confermato. Puoi aggiungere un nome tuo dopo (esempio: foglio di calcolo Spese di casa).</small>
+    <input id="nome" type="text" value="">
+
+    <label for="cosa">2. Cosa deve fare</label>
+    <small class="aiuto">Già compilato con la tua descrizione: puoi aggiungere chi entra, cosa compila, cosa ottiene.</small>
+    <textarea id="cosa"></textarea>
+
+    <label for="chi">3. Chi lo usa</label>
+    <small class="aiuto">Una frase: chi è la persona che lo usa nei primi 30 giorni.</small>
+    <textarea id="chi"></textarea>
+
+    <label for="riuscito">4. Come capisco che è riuscito</label>
+    <small class="aiuto">Una prova SÌ/NO che puoi fare da solo (esempio: apro il file, scrivo 3 spese e il totale del mese è giusto).</small>
+    <textarea id="riuscito"></textarea>
+
+    <label for="non">5. Cosa NON deve fare</label>
+    <small class="aiuto">Elenco di cose escluse, separate da virgola (esempio: account, pagamenti, grafica curata).</small>
+    <textarea id="non"></textarea>
+
+    <label for="vincoli">6. Vincoli e attrezzi</label>
+    <small class="aiuto">Con cosa lavori e cosa non hai (esempio: Mac, solo Claude Cowork, niente terminale, niente editor di codice, solo gratis).</small>
+    <textarea id="vincoli"></textarea>
+
+    <button type="button" id="prepara" class="principale">Prepara il testo</button>
+    <div id="avviso-campi" class="avviso" aria-live="polite"></div>
+  </form>
+
+  <div id="zona-testo" class="nascosto">
+    <h2>Testo pronto: copialo e incollalo in una chat Claude</h2>
+    <button type="button" id="copia">Copia il testo</button>
+    <textarea id="testo-pronto" readonly></textarea>
+  </div>
 </div>
 
 <script>
 // JavaScript ES2020: solo la logica dei pulsanti, nessuna libreria esterna (decisioni.md).
-// PASSO 2 di P04: costruzione del testo-richiesta, pulsante Copia, Ricomincia completo.
+// PASSO DI CODICE 2 di P04 giro 2: proposta del tipo (funzione proponiTipo), conferma e cambio tipo,
+// 6 campi precompilati, testo-richiesta con il tipo confermato, Copia, Ricomincia.
 (function () {
+  const DOMANDE = ['d1', 'd2', 'd3', 'd4', 'd5'];
   const CAMPI = ['nome', 'cosa', 'chi', 'riuscito', 'non', 'vincoli'];
-  const avviso = document.getElementById('avviso');
+
+  // I TIPI DI PRODOTTO (elenco fisso, decisioni.md "Giro 2 — Come nasce la proposta").
+  // Per ognuno: cos'è in una riga (spiegato in italiano), la prima fetta più piccola che si può aprire e vedere,
+  // come si consegna o pubblica gratis. Queste righe finiscono nel testo-richiesta per Claude.
+  const TIPI = {
+    'web app': {
+      cosa: 'una pagina web che raccoglie dati da chi la usa e li lavora, aperta nel browser da un indirizzo',
+      fetta: 'un solo file HTML aperto nel browser con doppio clic',
+      consegna: 'pubblicazione gratuita su GitHub Pages (spazio web gratuito di GitHub), caricando i file dal browser, senza terminale'
+    },
+    'app per telefono': {
+      cosa: 'una pagina web fatta per lo schermo del telefono, che si apre da un indirizzo e si aggiunge alla schermata Home come un\'app, senza App Store',
+      fetta: 'un solo file HTML che si apre bene sullo schermo stretto del telefono',
+      consegna: 'pubblicazione gratuita su GitHub Pages e aggiunta alla schermata Home del telefono dal browser'
+    },
+    'sito vetrina': {
+      cosa: 'una o più pagine web che mostrano informazioni fisse (chi sei, cosa offri, come contattarti), senza raccogliere dati',
+      fetta: 'un solo file HTML con i testi veri della pagina principale',
+      consegna: 'pubblicazione gratuita su GitHub Pages, caricando i file dal browser, senza terminale'
+    },
+    'foglio di calcolo': {
+      cosa: 'un file che si apre con Numbers o Excel, con righe, colonne e formule che fanno i conti da sole',
+      fetta: 'un solo file .xlsx con le prime righe di dati e un totale che funziona, aperto con doppio clic',
+      consegna: 'nessuna pubblicazione: il file finito resta nella cartella, con un file LEGGIMI.md che dice come si usa'
+    },
+    'documento o manuale': {
+      cosa: 'un testo da leggere o stampare, con indice e capitoli, che si segue dall\'inizio alla fine',
+      fetta: 'un solo file .md con indice e primo capitolo scritto, aperto con doppio clic',
+      consegna: 'nessuna pubblicazione: il file finito resta nella cartella, più una copia PDF da stampare o inviare'
+    },
+    'automazione': {
+      cosa: 'un comando rapido nell\'app Comandi Rapidi del Mac (già installata, gratuita) che ripete da solo un\'operazione noiosa con un clic',
+      fetta: 'un comando rapido che fa il primo passo da solo, costruito clic per clic nell\'app Comandi Rapidi',
+      consegna: 'nessuna pubblicazione: il comando rapido resta nell\'app Comandi Rapidi del Mac, con un file LEGGIMI.md che dice come si lancia'
+    }
+  };
+  const ORDINE_TIPI = ['web app', 'app per telefono', 'sito vetrina', 'foglio di calcolo', 'documento o manuale', 'automazione'];
+
+  // LE REGOLE: per ogni risposta, quali tipi prendono punti e la frase che spiega il perché.
+  const REGOLE = {
+    d1: {
+      io:    { punti: { 'foglio di calcolo': 1, 'automazione': 1, 'documento o manuale': 1 }, frase: 'lo usi solo tu' },
+      pochi: { punti: { 'web app': 1, 'foglio di calcolo': 1 }, frase: 'lo usano poche persone che conosci' },
+      tanti: { punti: { 'web app': 2, 'sito vetrina': 2, 'app per telefono': 1 }, frase: 'lo usano tante persone che non conosci' }
+    },
+    d2: {
+      mostra:    { punti: { 'sito vetrina': 3, 'documento o manuale': 2 }, frase: 'mostra informazioni da leggere o guardare' },
+      conti:     { punti: { 'foglio di calcolo': 4, 'web app': 1 }, frase: 'fa conti su numeri ed elenchi' },
+      raccoglie: { punti: { 'web app': 3, 'app per telefono': 1 }, frase: 'raccoglie dati da chi lo usa e li lavora in passi' },
+      ripete:    { punti: { 'automazione': 4 }, frase: 'ripete da solo un\'operazione noiosa' }
+    },
+    d3: {
+      computer:   { punti: { 'web app': 1, 'foglio di calcolo': 1, 'sito vetrina': 1 }, frase: 'si usa al computer' },
+      telefono:   { punti: { 'app per telefono': 4 }, frase: 'si usa sul telefono, in giro' },
+      testo:      { punti: { 'documento o manuale': 3 }, frase: 'si legge come un testo, anche stampato' },
+      sottofondo: { punti: { 'automazione': 2 }, frase: 'lavora da solo in sottofondo' }
+    },
+    d4: {
+      fisso:  { punti: { 'documento o manuale': 1, 'sito vetrina': 1 }, frase: 'una volta fatto resta uguale' },
+      cambia: { punti: { 'foglio di calcolo': 1, 'web app': 1, 'app per telefono': 1, 'automazione': 1 }, frase: 'i dati cambiano ogni volta che lo usi' }
+    },
+    d5: {
+      no: { punti: {}, frase: 'nessuno deve entrare con un proprio accesso' },
+      si: { punti: { 'web app': 3, 'app per telefono': 3 }, frase: 'chi lo usa deve entrare con un proprio accesso' }
+    }
+  };
+
+  const descrizione = document.getElementById('descrizione');
+  const avvisoDescrizione = document.getElementById('avviso-descrizione');
+  const passoQuestionario = document.getElementById('passo-questionario');
+  const avvisoQuestionario = document.getElementById('avviso-questionario');
+  const passoProposta = document.getElementById('passo-proposta');
+  const propostaDiv = document.getElementById('proposta');
+  const passoCampi = document.getElementById('passo-campi');
+  const tipoConfermatoP = document.getElementById('tipo-confermato');
+  const avvisoCampi = document.getElementById('avviso-campi');
   const zonaTesto = document.getElementById('zona-testo');
   const testoPronto = document.getElementById('testo-pronto');
   const bottoneCopia = document.getElementById('copia');
 
-  function valore(id) { return document.getElementById(id).value.trim(); }
+  // Stato della fetta: l'ultima proposta calcolata e il tipo confermato da Ric.
+  let ultimaProposta = null;   // { proposta: {tipo, perche}, alternative: [{tipo, perche}, ...] }
+  let tipoConfermato = '';
 
+  function risposta(nome) {
+    const scelta = document.querySelector('input[name="' + nome + '"]:checked');
+    return scelta ? scelta.value : '';
+  }
+  function questionarioCompleto() { return DOMANDE.every(d => risposta(d) !== ''); }
+  function valore(id) { return document.getElementById(id).value.trim(); }
   function campiTuttiPieni() { return CAMPI.every(id => valore(id) !== ''); }
 
-  // Il testo-richiesta: le risposte di Ric più le regole che il documento di Claude deve rispettare.
-  // Il documento NON è un manuale da leggere: è un KIT DI LAVORO fatto di prompt pronti da incollare,
-  // uno per seduta, perché il codice lo scrive Claude nella chat di lavoro, non Ric.
+  // proponiTipo: dalle 5 risposte calcola i punti di ogni tipo, il tipo proposto (più punti),
+  // fino a 2 alternative (le seguenti con almeno 1 punto) e, per ciascuno, il perché in una riga
+  // costruito con le frasi delle risposte che gli hanno dato punti. Ogni correzione alle regole si fa qui sopra, in REGOLE.
+  function proponiTipo() {
+    const punteggi = {};
+    const motivi = {};
+    ORDINE_TIPI.forEach(t => { punteggi[t] = 0; motivi[t] = []; });
+    DOMANDE.forEach(d => {
+      const regola = REGOLE[d][risposta(d)];
+      Object.keys(regola.punti).forEach(t => {
+        punteggi[t] += regola.punti[t];
+        motivi[t].push(regola.frase);
+      });
+    });
+    // Ordina per punti; a parità vince chi viene prima in ORDINE_TIPI (ordine stabile, niente casualità).
+    const classifica = ORDINE_TIPI.slice().sort((a, b) => punteggi[b] - punteggi[a]);
+    const descrivi = t => ({
+      tipo: t,
+      perche: TIPI[t].cosa.charAt(0).toUpperCase() + TIPI[t].cosa.slice(1) + '. Pesa quello che hai risposto: ' + motivi[t].join('; ') + '.'
+    });
+    const alternative = classifica.slice(1).filter(t => punteggi[t] > 0).slice(0, 2).map(descrivi);
+    // Se nessun altro tipo ha punti (caso raro), l'alternativa è comunque il secondo in classifica.
+    if (alternative.length === 0) alternative.push(descrivi(classifica[1]));
+    return { proposta: descrivi(classifica[0]), alternative: alternative };
+  }
+
+  function mostraProposta(p) {
+    propostaDiv.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'riquadro';
+    box.innerHTML = '<p><strong>Tipo proposto: ' + p.proposta.tipo + '</strong></p><p>Perché: ' + p.proposta.perche + '</p>';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'principale'; b.textContent = 'Conferma ' + p.proposta.tipo;
+    b.addEventListener('click', () => conferma(p.proposta.tipo));
+    box.appendChild(b);
+    propostaDiv.appendChild(box);
+    p.alternative.forEach(a => {
+      const alt = document.createElement('div');
+      alt.className = 'riquadro alternativa';
+      alt.innerHTML = '<p><strong>Alternativa: ' + a.tipo + '</strong></p><p>Perché: ' + a.perche + '</p>';
+      const ba = document.createElement('button');
+      ba.type = 'button'; ba.textContent = 'Scegli invece ' + a.tipo;
+      ba.addEventListener('click', () => conferma(a.tipo));
+      alt.appendChild(ba);
+      propostaDiv.appendChild(alt);
+    });
+  }
+
+  function conferma(tipo) {
+    tipoConfermato = tipo;
+    tipoConfermatoP.textContent = 'Tipo confermato: ' + tipo;
+    document.getElementById('nome').value = tipo;
+    if (valore('cosa') === '') document.getElementById('cosa').value = descrizione.value.trim();
+    passoProposta.classList.add('nascosto');
+    passoCampi.classList.remove('nascosto');
+    avvisoCampi.textContent = '';
+    passoCampi.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Il testo-richiesta: tipo confermato con perché e alternative, le risposte di Ric, e le regole per il KIT DI LAVORO
+  // in 4 parti (A regole, B partenza, C piano dei prompt, D prova finale), deciso nel giro 1 dopo la prova 8 di P04.
   function costruisciTesto() {
+    const t = TIPI[tipoConfermato];
+    const valutati = [ultimaProposta.proposta].concat(ultimaProposta.alternative);
+    const scelto = valutati.find(x => x.tipo === tipoConfermato);
+    const scartati = valutati.filter(x => x.tipo !== tipoConfermato);
+    const righeScartati = scartati.map(x => '- ' + x.tipo + ' — perché era valido: ' + x.perche);
     return [
-      'Sei il mio assistente per costruire un prodotto software. Io non ho studiato codice: lavoro solo con Claude Cowork sul Mac (Claude scrive i file dentro una cartella collegata, io apro i risultati con doppio clic), senza editor di codice e senza terminale. NON voglio un manuale da leggere: voglio un KIT DI LAVORO che io possa eseguire da solo, dall\'inizio alla fine, incollando testi già pronti. Il codice lo scriverà Claude nelle chat di lavoro, mai io.',
+      'Sei il mio assistente per costruire un prodotto. Io non ho studiato codice: lavoro solo con Claude Cowork sul Mac (Claude scrive i file dentro una cartella collegata, io apro i risultati con doppio clic), senza editor di codice e senza terminale. NON voglio un manuale da leggere: voglio un KIT DI LAVORO che io possa eseguire da solo, dall\'inizio alla fine, incollando testi già pronti. I file li scriverà Claude nelle chat di lavoro, mai io.',
       '',
       'IL PRODOTTO',
+      'Tipo di prodotto confermato: ' + tipoConfermato + ' (' + t.cosa + ').',
+      'Perché questo tipo: ' + scelto.perche + (scelto === ultimaProposta.proposta ? ' (era il tipo proposto dalla pagina)' : ' (scelto da me tra le alternative; la pagina proponeva: ' + ultimaProposta.proposta.tipo + ')'),
+      'Altre vie valutate e scartate:',
+      ...righeScartati,
+      'Il kit è per un prodotto di tipo "' + tipoConfermato + '": ogni prompt costruisce quello, non un altro tipo di prodotto.',
       'Nome del prodotto: ' + valore('nome'),
       'Cosa deve fare: ' + valore('cosa'),
       'Chi lo usa: ' + valore('chi'),
@@ -97,11 +322,11 @@
       '',
       'COSA MI DEVI CONSEGNARE (tutto in un solo messaggio, in quest\'ordine)',
       '',
-      'PARTE A — LE REGOLE, un testo pronto che io incollerò come primo messaggio di OGNI chat di lavoro. Deve dire a Claude: (1) chi sono e che non so programmare; (2) che ogni istruzione che mi dà è un blocco di 4 righe, in quest\'ordine: FAI (una sola azione, imperativo, con il testo o comando esatto da incollare e i minuti previsti; mai "qualcosa tipo", "adatta", "come al solito"), DOVE (app, finestra, menu, percorso del file), VEDI (cosa vedo se è andata bene, verificabile SÌ/NO), SE NO (cosa faccio se VEDI non succede o finiscono i minuti); (3) un blocco alla volta: dopo ogni blocco si ferma e aspetta il mio "fatto"; (4) se gli manca un dato fa una sola domanda chiusa PRIMA del blocco, mai dentro; (5) se serve un programma che non ho, me lo dice PRIMA con il blocco per installarlo, solo gratuito; (6) ogni termine tecnico spiegato in italiano tra parentesi la prima volta; (7) i file di codice li scrive lui, per intero, nella cartella collegata, con in cima 3 righe di commento in italiano (cosa fa, chi lo apre, cosa non tocca), zero librerie esterne se non indispensabili; (8) formato testo semplice, senza tabelle, senza diagrammi, senza titoli; (9) niente scelte lasciate a me: sceglie lui e dice in una riga il perché.',
+      'PARTE A — LE REGOLE, un testo pronto che io incollerò come primo messaggio di OGNI chat di lavoro. Deve dire a Claude: (1) chi sono e che non so programmare; (2) che ogni istruzione che mi dà è un blocco di 4 righe, in quest\'ordine: FAI (una sola azione, imperativo, con il testo o comando esatto da incollare e i minuti previsti; mai "qualcosa tipo", "adatta", "come al solito"), DOVE (app, finestra, menu, percorso del file), VEDI (cosa vedo se è andata bene, verificabile SÌ/NO), SE NO (cosa faccio se VEDI non succede o finiscono i minuti); (3) un blocco alla volta: dopo ogni blocco si ferma e aspetta il mio "fatto"; (4) se gli manca un dato fa una sola domanda chiusa PRIMA del blocco, mai dentro; (5) se serve un programma che non ho, me lo dice PRIMA con il blocco per installarlo, solo gratuito; (6) ogni termine tecnico spiegato in italiano tra parentesi la prima volta; (7) i file li scrive lui, per intero, nella cartella collegata, con in cima 3 righe di commento o di nota in italiano (cosa fa, chi lo apre, cosa non tocca), zero librerie o programmi esterni se non indispensabili; (8) formato testo semplice, senza tabelle, senza diagrammi, senza titoli; (9) niente scelte lasciate a me: sceglie lui e dice in una riga il perché.',
       '',
       'PARTE B — LA PARTENZA: i blocchi FAI/DOVE/VEDI/SE NO per prepararmi prima del primo prompt: creare la cartella del progetto sul Mac (dimmi tu il nome esatto), collegarla a Claude Cowork, salvare dentro il testo delle REGOLE come file 00-regole.md e il piano dei prompt come file 01-piano.md. Programmi o account: solo gratuiti o compresi nell\'abbonamento Claude Max; se qualcosa va installato o creato, i blocchi per farlo vengono qui, PRIMA di tutto.',
       '',
-      'PARTE C — IL PIANO DEI PROMPT: la sequenza numerata P01, P02, P03… fino al prodotto finito e pubblicato gratis a un indirizzo web. Massimo 10 prompt, ognuno eseguibile in una seduta di mezza giornata. Per ogni prompt scrivi ESATTAMENTE queste 4 righe: PRODUCE (cosa esiste nella cartella alla fine, verificabile a occhio: quali file, cosa fanno); TESTO DA INCOLLARE (il prompt completo, tra virgolette, che io copio e incollo nella chat di lavoro subito dopo le REGOLE; il prompt dice a Claude cosa costruire in quel giro, in passi piccoli, con un blocco FAI/DOVE/VEDI/SE NO dopo ogni passo in cui io apro il risultato e dico "fatto"); VEDI ALLA FINE (la prova SÌ/NO che faccio io, dal Mac, per sapere che il prompt è riuscito); SE NO (cosa incollo nella stessa chat per farlo correggere: il testo esatto). Il primo prompt costruisce la fetta più piccola che si può aprire e vedere (per una web app: un solo file HTML aperto nel browser con doppio clic); i prompt seguenti aggiungono un pezzo alla volta; il penultimo è la verifica di tutte le prove; l\'ultimo pubblica gratis (per una web app: GitHub Pages o simile, senza terminale) e mi dà l\'indirizzo. Rispetta "Cosa NON deve fare": nessun prompt aggiunge quelle cose.',
+      'PARTE C — IL PIANO DEI PROMPT: la sequenza numerata P01, P02, P03… fino al prodotto finito e consegnato. Massimo 10 prompt, ognuno eseguibile in una seduta di mezza giornata. Per ogni prompt scrivi ESATTAMENTE queste 4 righe: PRODUCE (cosa esiste nella cartella alla fine, verificabile a occhio: quali file, cosa fanno); TESTO DA INCOLLARE (il prompt completo, tra virgolette, che io copio e incollo nella chat di lavoro subito dopo le REGOLE; il prompt dice a Claude cosa costruire in quel giro, in passi piccoli, con un blocco FAI/DOVE/VEDI/SE NO dopo ogni passo in cui io apro il risultato e dico "fatto"); VEDI ALLA FINE (la prova SÌ/NO che faccio io, dal Mac, per sapere che il prompt è riuscito); SE NO (cosa incollo nella stessa chat per farlo correggere: il testo esatto). Il primo prompt costruisce la fetta più piccola che si può aprire e vedere: per questo tipo di prodotto, ' + t.fetta + '. I prompt seguenti aggiungono un pezzo alla volta; il penultimo è la verifica di tutte le prove; l\'ultimo consegna il prodotto finito: per questo tipo di prodotto, ' + t.consegna + '. Rispetta "Cosa NON deve fare": nessun prompt aggiunge quelle cose.',
       '',
       'PARTE D — LA PROVA FINALE: la prova SÌ/NO che corrisponde a "Come capisco che è riuscito", con i blocchi FAI/DOVE/VEDI/SE NO per farla, e cosa incollo se è NO.',
       '',
@@ -111,15 +336,47 @@
     ].join('\n');
   }
 
-  document.getElementById('prepara').addEventListener('click', function () {
-    if (!campiTuttiPieni()) {
-      avviso.textContent = 'Compila tutti i campi prima di premere';
-      zonaTesto.style.display = 'none';
+  document.getElementById('avanti').addEventListener('click', function () {
+    if (descrizione.value.trim() === '') {
+      avvisoDescrizione.textContent = 'Scrivi cosa vuoi ottenere prima di premere';
+      passoQuestionario.classList.add('nascosto');
       return;
     }
-    avviso.textContent = '';
+    avvisoDescrizione.textContent = '';
+    passoQuestionario.classList.remove('nascosto');
+    passoQuestionario.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.getElementById('proponi').addEventListener('click', function () {
+    if (!questionarioCompleto()) {
+      avvisoQuestionario.textContent = 'Rispondi a tutte le domande prima di premere';
+      passoProposta.classList.add('nascosto');
+      return;
+    }
+    avvisoQuestionario.textContent = '';
+    ultimaProposta = proponiTipo();
+    mostraProposta(ultimaProposta);
+    passoCampi.classList.add('nascosto');
+    passoProposta.classList.remove('nascosto');
+    passoProposta.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.getElementById('cambia-tipo').addEventListener('click', function () {
+    passoCampi.classList.add('nascosto');
+    zonaTesto.classList.add('nascosto');
+    passoProposta.classList.remove('nascosto');
+    passoProposta.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.getElementById('prepara').addEventListener('click', function () {
+    if (!campiTuttiPieni()) {
+      avvisoCampi.textContent = 'Compila tutti i campi prima di premere';
+      zonaTesto.classList.add('nascosto');
+      return;
+    }
+    avvisoCampi.textContent = '';
     testoPronto.value = costruisciTesto();
-    zonaTesto.style.display = 'block';
+    zonaTesto.classList.remove('nascosto');
     zonaTesto.scrollIntoView({ behavior: 'smooth' });
   });
 
@@ -140,16 +397,22 @@
       testoPronto.focus();
       testoPronto.select();
       try { document.execCommand('copy'); mostraCopiato(); }
-      catch (e) { avviso.textContent = 'Copia automatica non riuscita: seleziona il testo nel riquadro e premi Cmd+C'; }
+      catch (e) { avvisoCampi.textContent = 'Copia automatica non riuscita: seleziona il testo nel riquadro e premi Cmd+C'; }
     }
   });
 
   document.getElementById('ricomincia').addEventListener('click', function () {
+    descrizione.value = '';
+    DOMANDE.forEach(d => { document.querySelectorAll('input[name="' + d + '"]').forEach(r => { r.checked = false; }); });
     CAMPI.forEach(id => { document.getElementById(id).value = ''; });
-    document.getElementById('nome').value = 'web app';
-    avviso.textContent = '';
-    zonaTesto.style.display = 'none';
+    ultimaProposta = null;
+    tipoConfermato = '';
+    propostaDiv.innerHTML = '';
     testoPronto.value = '';
+    avvisoDescrizione.textContent = '';
+    avvisoQuestionario.textContent = '';
+    avvisoCampi.textContent = '';
+    [passoQuestionario, passoProposta, passoCampi, zonaTesto].forEach(el => el.classList.add('nascosto'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 })();
