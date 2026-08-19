@@ -1,0 +1,158 @@
+<!-- COSA FA: pagina singola dove Ric compila 6 campi sulla sua web app, preme un pulsante e ottiene il testo-richiesta da incollare in una chat Claude. -->
+<!-- CHI LO APRE: solo Ric, con doppio clic dal Finder (WebAppSH/app/index.html), in Safari o Chrome, anche senza internet. -->
+<!-- COSA NON TOCCA: nessun file sul Mac, nessun salvataggio, nessun invio in rete, nessuna libreria esterna. -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prepara la richiesta per la tua web app</title>
+<style>
+  /* CSS3: aspetto essenziale, si deve solo leggere bene (decisioni.md: niente grafica curata) */
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; line-height: 1.5; color: #222; background: #fff; }
+  h1 { font-size: 1.5rem; margin: 0 0 8px; }
+  p.intro { margin: 0 0 24px; color: #444; }
+  label { display: block; font-weight: bold; margin: 18px 0 4px; }
+  small.aiuto { display: block; font-weight: normal; color: #666; margin-bottom: 6px; }
+  input, textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid #999; border-radius: 4px; }
+  textarea { min-height: 80px; resize: vertical; }
+  button { font: inherit; padding: 10px 18px; margin: 20px 8px 0 0; border: 1px solid #333; border-radius: 4px; background: #eee; cursor: pointer; }
+  button.principale { background: #222; color: #fff; }
+  #avviso { color: #b00020; font-weight: bold; margin-top: 12px; min-height: 1.4em; }
+  #zona-testo { display: none; margin-top: 24px; }
+  #zona-testo h2 { font-size: 1.1rem; margin: 0 0 8px; }
+  #testo-pronto { width: 100%; box-sizing: border-box; min-height: 320px; font: 0.95rem/1.4 Menlo, Monaco, monospace; padding: 10px; border: 1px solid #999; border-radius: 4px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<h1>Prepara la richiesta per la tua web app</h1>
+<p class="intro">Compila i 6 campi, premi "Prepara il testo", copia il testo che compare e incollalo in una chat Claude: riceverai il documento per completare la web app dall'inizio alla fine.</p>
+
+<form id="modulo" autocomplete="off">
+
+  <label for="nome">1. Nome del prodotto</label>
+  <small class="aiuto">In questa fetta il prodotto è uno solo: "web app". Puoi aggiungere un nome tuo dopo (esempio: web app SerenoHub).</small>
+  <input id="nome" type="text" value="web app">
+
+  <label for="cosa">2. Cosa deve fare</label>
+  <small class="aiuto">Una o due frasi: chi entra, cosa compila, cosa ottiene.</small>
+  <textarea id="cosa"></textarea>
+
+  <label for="chi">3. Chi lo usa</label>
+  <small class="aiuto">Una frase: chi è la persona che la usa nei primi 30 giorni.</small>
+  <textarea id="chi"></textarea>
+
+  <label for="riuscito">4. Come capisco che è riuscito</label>
+  <small class="aiuto">Una prova SÌ/NO che puoi fare da solo (esempio: premo il pulsante e in 20 minuti ho il documento).</small>
+  <textarea id="riuscito"></textarea>
+
+  <label for="non">5. Cosa NON deve fare</label>
+  <small class="aiuto">Elenco di cose escluse, separate da virgola (esempio: account, pagamenti, grafica curata).</small>
+  <textarea id="non"></textarea>
+
+  <label for="vincoli">6. Vincoli e attrezzi</label>
+  <small class="aiuto">Con cosa lavori e cosa non hai (esempio: Mac, solo Claude Cowork, niente terminale, niente editor di codice, solo gratis).</small>
+  <textarea id="vincoli"></textarea>
+
+  <button type="button" id="prepara" class="principale">Prepara il testo</button>
+  <button type="button" id="ricomincia">Ricomincia</button>
+  <div id="avviso" aria-live="polite"></div>
+</form>
+
+<div id="zona-testo">
+  <h2>Testo pronto: copialo e incollalo in una chat Claude</h2>
+  <button type="button" id="copia">Copia il testo</button>
+  <textarea id="testo-pronto" readonly></textarea>
+</div>
+
+<script>
+// JavaScript ES2020: solo la logica dei pulsanti, nessuna libreria esterna (decisioni.md).
+// PASSO 2 di P04: costruzione del testo-richiesta, pulsante Copia, Ricomincia completo.
+(function () {
+  const CAMPI = ['nome', 'cosa', 'chi', 'riuscito', 'non', 'vincoli'];
+  const avviso = document.getElementById('avviso');
+  const zonaTesto = document.getElementById('zona-testo');
+  const testoPronto = document.getElementById('testo-pronto');
+  const bottoneCopia = document.getElementById('copia');
+
+  function valore(id) { return document.getElementById(id).value.trim(); }
+
+  function campiTuttiPieni() { return CAMPI.every(id => valore(id) !== ''); }
+
+  // Il testo-richiesta: le risposte di Ric più le regole che il documento di Claude deve rispettare.
+  // Il documento NON è un manuale da leggere: è un KIT DI LAVORO fatto di prompt pronti da incollare,
+  // uno per seduta, perché il codice lo scrive Claude nella chat di lavoro, non Ric.
+  function costruisciTesto() {
+    return [
+      'Sei il mio assistente per costruire un prodotto software. Io non ho studiato codice: lavoro solo con Claude Cowork sul Mac (Claude scrive i file dentro una cartella collegata, io apro i risultati con doppio clic), senza editor di codice e senza terminale. NON voglio un manuale da leggere: voglio un KIT DI LAVORO che io possa eseguire da solo, dall\'inizio alla fine, incollando testi già pronti. Il codice lo scriverà Claude nelle chat di lavoro, mai io.',
+      '',
+      'IL PRODOTTO',
+      'Nome del prodotto: ' + valore('nome'),
+      'Cosa deve fare: ' + valore('cosa'),
+      'Chi lo usa: ' + valore('chi'),
+      'Come capisco che è riuscito: ' + valore('riuscito'),
+      'Cosa NON deve fare: ' + valore('non'),
+      'Vincoli e attrezzi: ' + valore('vincoli'),
+      '',
+      'COSA MI DEVI CONSEGNARE (tutto in un solo messaggio, in quest\'ordine)',
+      '',
+      'PARTE A — LE REGOLE, un testo pronto che io incollerò come primo messaggio di OGNI chat di lavoro. Deve dire a Claude: (1) chi sono e che non so programmare; (2) che ogni istruzione che mi dà è un blocco di 4 righe, in quest\'ordine: FAI (una sola azione, imperativo, con il testo o comando esatto da incollare e i minuti previsti; mai "qualcosa tipo", "adatta", "come al solito"), DOVE (app, finestra, menu, percorso del file), VEDI (cosa vedo se è andata bene, verificabile SÌ/NO), SE NO (cosa faccio se VEDI non succede o finiscono i minuti); (3) un blocco alla volta: dopo ogni blocco si ferma e aspetta il mio "fatto"; (4) se gli manca un dato fa una sola domanda chiusa PRIMA del blocco, mai dentro; (5) se serve un programma che non ho, me lo dice PRIMA con il blocco per installarlo, solo gratuito; (6) ogni termine tecnico spiegato in italiano tra parentesi la prima volta; (7) i file di codice li scrive lui, per intero, nella cartella collegata, con in cima 3 righe di commento in italiano (cosa fa, chi lo apre, cosa non tocca), zero librerie esterne se non indispensabili; (8) formato testo semplice, senza tabelle, senza diagrammi, senza titoli; (9) niente scelte lasciate a me: sceglie lui e dice in una riga il perché.',
+      '',
+      'PARTE B — LA PARTENZA: i blocchi FAI/DOVE/VEDI/SE NO per prepararmi prima del primo prompt: creare la cartella del progetto sul Mac (dimmi tu il nome esatto), collegarla a Claude Cowork, salvare dentro il testo delle REGOLE come file 00-regole.md e il piano dei prompt come file 01-piano.md. Programmi o account: solo gratuiti o compresi nell\'abbonamento Claude Max; se qualcosa va installato o creato, i blocchi per farlo vengono qui, PRIMA di tutto.',
+      '',
+      'PARTE C — IL PIANO DEI PROMPT: la sequenza numerata P01, P02, P03… fino al prodotto finito e pubblicato gratis a un indirizzo web. Massimo 10 prompt, ognuno eseguibile in una seduta di mezza giornata. Per ogni prompt scrivi ESATTAMENTE queste 4 righe: PRODUCE (cosa esiste nella cartella alla fine, verificabile a occhio: quali file, cosa fanno); TESTO DA INCOLLARE (il prompt completo, tra virgolette, che io copio e incollo nella chat di lavoro subito dopo le REGOLE; il prompt dice a Claude cosa costruire in quel giro, in passi piccoli, con un blocco FAI/DOVE/VEDI/SE NO dopo ogni passo in cui io apro il risultato e dico "fatto"); VEDI ALLA FINE (la prova SÌ/NO che faccio io, dal Mac, per sapere che il prompt è riuscito); SE NO (cosa incollo nella stessa chat per farlo correggere: il testo esatto). Il primo prompt costruisce la fetta più piccola che si può aprire e vedere (per una web app: un solo file HTML aperto nel browser con doppio clic); i prompt seguenti aggiungono un pezzo alla volta; il penultimo è la verifica di tutte le prove; l\'ultimo pubblica gratis (per una web app: GitHub Pages o simile, senza terminale) e mi dà l\'indirizzo. Rispetta "Cosa NON deve fare": nessun prompt aggiunge quelle cose.',
+      '',
+      'PARTE D — LA PROVA FINALE: la prova SÌ/NO che corrisponde a "Come capisco che è riuscito", con i blocchi FAI/DOVE/VEDI/SE NO per farla, e cosa incollo se è NO.',
+      '',
+      'REGOLE PER TE ADESSO: (a) formato testo semplice, senza tabelle né diagrammi; (b) niente che io debba "adattare", "completare" o "scegliere": ogni testo è pronto da incollare così com\'è; (c) se ti manca un dato per scrivere il kit, non inventare: fammi le domande chiuse (sì/no o un valore) tutte insieme in un solo messaggio, in elenco numerato, PRIMA del kit; avute le risposte, scrivi il kit intero (parti A, B, C, D) in un solo messaggio; (d) alla fine del kit scrivi una riga: "Per iniziare: fai la PARTE B, poi apri una chat nuova, incolla le REGOLE, poi incolla il TESTO DA INCOLLARE di P01".',
+      '',
+      'Inizia ora.'
+    ].join('\n');
+  }
+
+  document.getElementById('prepara').addEventListener('click', function () {
+    if (!campiTuttiPieni()) {
+      avviso.textContent = 'Compila tutti i campi prima di premere';
+      zonaTesto.style.display = 'none';
+      return;
+    }
+    avviso.textContent = '';
+    testoPronto.value = costruisciTesto();
+    zonaTesto.style.display = 'block';
+    zonaTesto.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  function mostraCopiato() {
+    bottoneCopia.textContent = 'Copiato';
+    setTimeout(function () { bottoneCopia.textContent = 'Copia il testo'; }, 3000);
+  }
+
+  bottoneCopia.addEventListener('click', function () {
+    const testo = testoPronto.value;
+    // Prima via: appunti moderni (clipboard). Seconda via, se la prima non è permessa: seleziona e copia alla vecchia maniera.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(testo).then(mostraCopiato).catch(copiaVecchiaManiera);
+    } else {
+      copiaVecchiaManiera();
+    }
+    function copiaVecchiaManiera() {
+      testoPronto.focus();
+      testoPronto.select();
+      try { document.execCommand('copy'); mostraCopiato(); }
+      catch (e) { avviso.textContent = 'Copia automatica non riuscita: seleziona il testo nel riquadro e premi Cmd+C'; }
+    }
+  });
+
+  document.getElementById('ricomincia').addEventListener('click', function () {
+    CAMPI.forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('nome').value = 'web app';
+    avviso.textContent = '';
+    zonaTesto.style.display = 'none';
+    testoPronto.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
