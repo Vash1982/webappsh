@@ -1,6 +1,6 @@
-<!-- COSA FA: pagina singola dove Ric descrive cosa vuole ottenere, risponde a un questionario a scelta chiusa, riceve la proposta del tipo di prodotto (con perché e alternativa), conferma, compila 6 campi e ottiene il testo-richiesta da incollare in una chat Claude per avere il kit di quel tipo. -->
-<!-- CHI LO APRE: solo Ric, con doppio clic dal Finder (WebAppSH/app/index.html), in Safari o Chrome, anche senza internet. -->
-<!-- COSA NON TOCCA: nessun file sul Mac, nessun salvataggio, nessun invio in rete, nessuna libreria esterna, nessun servizio esterno per proporre il tipo. -->
+<!-- COSA FA: pagina singola dove Ric descrive cosa vuole ottenere, risponde a un questionario a scelta chiusa, riceve la proposta del tipo di prodotto (con perché e alternativa), conferma, compila 6 campi e ottiene il testo-richiesta da incollare in una chat Claude per avere il kit di quel tipo; ogni richiesta si salva da sola nello Storico (memoria del browser, localStorage, chiave "webappsh-storico"), dove Ric incolla anche il kit ricevuto e ritrova tutto alla prossima apertura, riaprendolo con un clic. -->
+<!-- CHI LO APRE: solo Ric, con doppio clic dal Finder (WebAppSH/app/index.html), in Safari o Chrome, anche senza internet; lo storico sopravvive solo nella finestra normale, non in quella privata. -->
+<!-- COSA NON TOCCA: nessun file sul Mac, nessun invio in rete, nessuna libreria esterna, nessun servizio esterno; salva solo nella memoria del browser di questo Mac. -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -31,12 +31,21 @@
   .riquadro button { margin-top: 10px; }
   #tipo-confermato { font-weight: bold; font-size: 1.1rem; margin: 24px 0 0; }
   #testo-pronto { width: 100%; box-sizing: border-box; min-height: 320px; font: 0.95rem/1.4 Menlo, Monaco, monospace; padding: 10px; border: 1px solid #999; border-radius: 4px; white-space: pre-wrap; }
+  /* Lo Storico delle richieste (giro 3) */
+  #sezione-storico { margin-top: 40px; border-top: 2px solid #222; padding-top: 8px; }
+  p.aiuto-storico { color: #666; margin: 4px 0 12px; }
+  .voce { border: 1px solid #999; border-radius: 4px; margin: 10px 0; overflow: hidden; }
+  .voce-titolo { display: block; width: 100%; box-sizing: border-box; text-align: left; background: #f2f2f2; border: none; border-radius: 0; margin: 0; padding: 10px 12px; font: inherit; cursor: pointer; }
+  .voce-corpo { padding: 4px 12px 12px; border-top: 1px solid #ccc; }
+  .voce-corpo p { margin: 10px 0 4px; }
+  textarea.salvato { width: 100%; box-sizing: border-box; min-height: 160px; font: 0.9rem/1.4 Menlo, Monaco, monospace; padding: 8px; border: 1px solid #999; border-radius: 4px; white-space: pre-wrap; }
+  .voce-corpo button { margin-top: 8px; }
 </style>
 </head>
 <body>
 
 <h1>Scegli il tipo di prodotto e prepara la richiesta</h1>
-<p class="intro">Descrivi cosa vuoi ottenere e premi "Avanti": la pagina ti fa un questionario a scelta chiusa, ti propone il tipo di prodotto adatto con il perché e un'alternativa, tu confermi, compili i 6 campi e ottieni il testo da incollare in una chat Claude per ricevere il kit di quel tipo.</p>
+<p class="intro">Descrivi cosa vuoi ottenere e premi "Avanti": la pagina ti fa un questionario a scelta chiusa, ti propone il tipo di prodotto adatto con il perché e un'alternativa, tu confermi, compili i 6 campi e ottieni il testo da incollare in una chat Claude per ricevere il kit di quel tipo. Ogni richiesta si salva da sola nello Storico in fondo alla pagina: lì incolli anche il kit ricevuto da Claude, e alla prossima apertura ritrovi tutto e lo riapri con un clic.</p>
 
 <!-- PASSO 1: la descrizione -->
 <div id="passo-descrizione">
@@ -138,10 +147,19 @@
   </div>
 </div>
 
+<!-- LO STORICO (giro 3): ogni richiesta si salva qui da sola; il kit ricevuto da Claude si incolla accanto -->
+<div id="sezione-storico">
+  <h2>Storico delle richieste</h2>
+  <p class="aiuto-storico">Ogni richiesta si salva da sola qui, nella memoria di questo browser, appena premi "Prepara il testo". Clicca una voce per riaprirla o richiuderla.</p>
+  <div id="storico"></div>
+  <div id="avviso-storico" class="avviso" aria-live="polite"></div>
+</div>
+
 <script>
 // JavaScript ES2020: solo la logica dei pulsanti, nessuna libreria esterna (decisioni.md).
-// PASSO DI CODICE 2 di P04 giro 2: proposta del tipo (funzione proponiTipo), conferma e cambio tipo,
-// 6 campi precompilati, testo-richiesta con il tipo confermato, Copia, Ricomincia.
+// P04 giro 3: lo Storico delle richieste — salvataggio automatico di richiesta e testo-richiesta
+// nel localStorage (chiave "webappsh-storico", funzioni salvaStorico/leggiStorico), kit incollato
+// accanto, riapertura con un clic. Il percorso del giro 2 (proponiTipo, conferma, testo) resta uguale.
 (function () {
   const DOMANDE = ['d1', 'd2', 'd3', 'd4', 'd5'];
   const CAMPI = ['nome', 'cosa', 'chi', 'riuscito', 'non', 'vincoli'];
@@ -228,6 +246,147 @@
   // Stato della fetta: l'ultima proposta calcolata e il tipo confermato da Ric.
   let ultimaProposta = null;   // { proposta: {tipo, perche}, alternative: [{tipo, perche}, ...] }
   let tipoConfermato = '';
+
+  // LO STORICO (giro 3). Ogni voce: { id, creata (millisecondi), tipo, descrizione, testo, kit }.
+  // Vive nel localStorage (memoria che il browser tiene sul Mac anche a browser chiuso) sotto CHIAVE_STORICO.
+  const CHIAVE_STORICO = 'webappsh-storico';
+  const storicoDiv = document.getElementById('storico');
+  const avvisoStorico = document.getElementById('avviso-storico');
+  let voceCorrenteId = null;   // la voce della compilazione in corso: ripremendo "Prepara il testo" si aggiorna, non si duplica
+  let voceApertaId = null;     // la voce aperta nell'elenco (una alla volta)
+
+  // leggiStorico: rilegge le voci salvate; se la memoria è vuota o illeggibile, elenco vuoto senza errori.
+  function leggiStorico() {
+    try {
+      const grezzo = localStorage.getItem(CHIAVE_STORICO);
+      const dati = grezzo ? JSON.parse(grezzo) : [];
+      return Array.isArray(dati) ? dati : [];
+    } catch (e) { return []; }
+  }
+
+  // salvaStorico: scrive tutte le voci; se il browser non permette di salvare, avvisa senza rompersi.
+  function salvaStorico(voci) {
+    try {
+      localStorage.setItem(CHIAVE_STORICO, JSON.stringify(voci));
+      avvisoStorico.textContent = '';
+      return true;
+    } catch (e) {
+      avvisoStorico.textContent = 'Salvataggio non riuscito: questa finestra non può ricordare. Usa una finestra normale (non privata).';
+      return false;
+    }
+  }
+
+  let voci = leggiStorico();
+
+  function dataLeggibile(ms) {
+    const d = new Date(ms);
+    const due = n => (n < 10 ? '0' : '') + n;
+    return due(d.getDate()) + '/' + due(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + due(d.getHours()) + ':' + due(d.getMinutes());
+  }
+
+  function inizioDescrizione(testo) {
+    return testo.length > 60 ? testo.slice(0, 60) + '…' : testo;
+  }
+
+  // mostraStorico: ridisegna l'elenco, la voce più recente in alto; un clic sul titolo apre o richiude la voce.
+  function mostraStorico() {
+    storicoDiv.innerHTML = '';
+    if (voci.length === 0) {
+      const p = document.createElement('p');
+      p.textContent = 'Nessuna richiesta salvata';
+      storicoDiv.appendChild(p);
+      return;
+    }
+    voci.slice().reverse().forEach(v => {
+      const box = document.createElement('div');
+      box.className = 'voce';
+      const titolo = document.createElement('button');
+      titolo.type = 'button';
+      titolo.className = 'voce-titolo';
+      titolo.textContent = dataLeggibile(v.creata) + ' — ' + v.tipo + ' — ' + inizioDescrizione(v.descrizione);
+      titolo.addEventListener('click', function () {
+        voceApertaId = (voceApertaId === v.id ? null : v.id);
+        mostraStorico();
+      });
+      box.appendChild(titolo);
+      if (voceApertaId === v.id) box.appendChild(corpoVoce(v));
+      storicoDiv.appendChild(box);
+    });
+  }
+
+  // corpoVoce: il contenuto della voce aperta — testo-richiesta salvato con il suo pulsante di copia,
+  // e il kit: se manca, il riquadro per incollarlo con "Salva il kit"; se c'è, si rilegge e basta (non si modifica).
+  function corpoVoce(v) {
+    const corpo = document.createElement('div');
+    corpo.className = 'voce-corpo';
+
+    const pTesto = document.createElement('p');
+    const bTesto = document.createElement('strong');
+    bTesto.textContent = 'Testo-richiesta salvato:';
+    pTesto.appendChild(bTesto);
+    corpo.appendChild(pTesto);
+    const areaTesto = document.createElement('textarea');
+    areaTesto.className = 'salvato';
+    areaTesto.readOnly = true;
+    areaTesto.value = v.testo;
+    corpo.appendChild(areaTesto);
+    const bottoneCopiaVoce = document.createElement('button');
+    bottoneCopiaVoce.type = 'button';
+    bottoneCopiaVoce.textContent = 'Copia il testo salvato';
+    bottoneCopiaVoce.addEventListener('click', function () {
+      copiaNegliAppunti(v.testo, bottoneCopiaVoce, 'Copia il testo salvato', areaTesto);
+    });
+    corpo.appendChild(bottoneCopiaVoce);
+
+    const pKit = document.createElement('p');
+    const bKit = document.createElement('strong');
+    bKit.textContent = 'Kit:';
+    pKit.appendChild(bKit);
+    corpo.appendChild(pKit);
+    if (v.kit) {
+      const areaKit = document.createElement('textarea');
+      areaKit.className = 'salvato';
+      areaKit.readOnly = true;
+      areaKit.value = v.kit;
+      corpo.appendChild(areaKit);
+    } else {
+      pKit.appendChild(document.createTextNode(' non ancora salvato. Incolla qui il kit ricevuto da Claude e premi il pulsante.'));
+      const areaKit = document.createElement('textarea');
+      areaKit.className = 'salvato';
+      corpo.appendChild(areaKit);
+      const bottoneKit = document.createElement('button');
+      bottoneKit.type = 'button';
+      bottoneKit.className = 'principale';
+      bottoneKit.textContent = 'Salva il kit';
+      bottoneKit.addEventListener('click', function () {
+        if (areaKit.value.trim() === '') {
+          avvisoStorico.textContent = 'Incolla il kit nel riquadro prima di premere';
+          return;
+        }
+        avvisoStorico.textContent = '';
+        v.kit = areaKit.value;
+        if (salvaStorico(voci)) mostraStorico();
+      });
+      corpo.appendChild(bottoneKit);
+    }
+    return corpo;
+  }
+
+  // salvaRichiestaNelloStorico: chiamata quando il testo-richiesta è pronto; crea la voce
+  // o aggiorna quella della compilazione in corso (niente doppioni ripremendo il pulsante).
+  function salvaRichiestaNelloStorico() {
+    const voceEsistente = voci.find(v => v.id === voceCorrenteId);
+    if (voceEsistente) {
+      voceEsistente.tipo = tipoConfermato;
+      voceEsistente.descrizione = descrizione.value.trim();
+      voceEsistente.testo = testoPronto.value;
+    } else {
+      const adesso = Date.now();
+      voceCorrenteId = adesso;
+      voci.push({ id: adesso, creata: adesso, tipo: tipoConfermato, descrizione: descrizione.value.trim(), testo: testoPronto.value, kit: '' });
+    }
+    if (salvaStorico(voci)) mostraStorico();
+  }
 
   function risposta(nome) {
     const scelta = document.querySelector('input[name="' + nome + '"]:checked');
@@ -376,29 +535,35 @@
     }
     avvisoCampi.textContent = '';
     testoPronto.value = costruisciTesto();
+    salvaRichiestaNelloStorico();
     zonaTesto.classList.remove('nascosto');
     zonaTesto.scrollIntoView({ behavior: 'smooth' });
   });
 
-  function mostraCopiato() {
-    bottoneCopia.textContent = 'Copiato';
-    setTimeout(function () { bottoneCopia.textContent = 'Copia il testo'; }, 3000);
-  }
-
-  bottoneCopia.addEventListener('click', function () {
-    const testo = testoPronto.value;
-    // Prima via: appunti moderni (clipboard). Seconda via, se la prima non è permessa: seleziona e copia alla vecchia maniera.
+  // copiaNegliAppunti: copia un testo con conferma sul pulsante premuto.
+  // Prima via: appunti moderni (clipboard). Seconda via, se la prima non è permessa: seleziona e copia alla vecchia maniera.
+  function copiaNegliAppunti(testo, bottone, scrittaNormale, area) {
+    function mostraCopiato() {
+      bottone.textContent = 'Copiato';
+      setTimeout(function () { bottone.textContent = scrittaNormale; }, 3000);
+    }
+    function copiaVecchiaManiera() {
+      area.readOnly = false;
+      area.focus();
+      area.select();
+      try { document.execCommand('copy'); mostraCopiato(); }
+      catch (e) { avvisoStorico.textContent = 'Copia automatica non riuscita: seleziona il testo nel riquadro e premi Cmd+C'; }
+      area.readOnly = true;
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(testo).then(mostraCopiato).catch(copiaVecchiaManiera);
     } else {
       copiaVecchiaManiera();
     }
-    function copiaVecchiaManiera() {
-      testoPronto.focus();
-      testoPronto.select();
-      try { document.execCommand('copy'); mostraCopiato(); }
-      catch (e) { avvisoCampi.textContent = 'Copia automatica non riuscita: seleziona il testo nel riquadro e premi Cmd+C'; }
-    }
+  }
+
+  bottoneCopia.addEventListener('click', function () {
+    copiaNegliAppunti(testoPronto.value, bottoneCopia, 'Copia il testo', testoPronto);
   });
 
   document.getElementById('ricomincia').addEventListener('click', function () {
@@ -407,14 +572,19 @@
     CAMPI.forEach(id => { document.getElementById(id).value = ''; });
     ultimaProposta = null;
     tipoConfermato = '';
+    voceCorrenteId = null;
     propostaDiv.innerHTML = '';
     testoPronto.value = '';
     avvisoDescrizione.textContent = '';
     avvisoQuestionario.textContent = '';
     avvisoCampi.textContent = '';
+    avvisoStorico.textContent = '';
     [passoQuestionario, passoProposta, passoCampi, zonaTesto].forEach(el => el.classList.add('nascosto'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+
+  // All'apertura della pagina lo storico salvato si rilegge e si mostra subito ("Ricomincia" non lo tocca).
+  mostraStorico();
 })();
 </script>
 </body>
